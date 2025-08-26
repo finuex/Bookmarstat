@@ -2,7 +2,7 @@
 let bookmarksData = [];
 let domainsData = {};
 let foldersData = {};
-let domainChartInstance, timelineChartInstance, folderChartInstance, timeChartInstance;
+let timelineChartInstance, folderChartInstance;
 
 // Variables for table pagination and search
 let filteredDomainsData = [];
@@ -157,80 +157,11 @@ function updateStats() {
 
 // Memperbarui chart
 function updateCharts() {
-    updateDomainChart();
     updateTimelineChart();
     updateFolderChart();
-    updateTimeChart();
 }
 
-// Chart untuk domain paling banyak
-function updateDomainChart() {
-    const canvas = document.getElementById('domainChart');
-    if (!canvas) return;
-    
-    const ctx = canvas.getContext('2d');
-    
-    // Mengurutkan domain berdasarkan jumlah bookmark
-    const sortedDomains = Object.entries(domainsData)
-        .sort((a, b) => b[1].count - a[1].count)
-        .slice(0, 10);
-    
-    const labels = sortedDomains.map(item => item[0]);
-    const data = sortedDomains.map(item => item[1].count);
-    
-    if (domainChartInstance) {
-        domainChartInstance.destroy();
-    }
-    
-    domainChartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Jumlah Bookmark',
-                data: data,
-                backgroundColor: 'rgba(54, 162, 235, 0.7)',
-                borderColor: 'rgba(54, 162, 235, 1)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            interaction: {
-                intersect: false,
-                mode: 'index'
-            },
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    title: {
-                        display: true,
-                        text: 'Jumlah Bookmark'
-                    }
-                },
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Domain'
-                    }
-                }
-            },
-            // CSP-compliant configuration
-            animation: {
-                duration: 0
-            },
-            hover: {
-                animationDuration: 0
-            },
-            responsiveAnimationDuration: 0
-        }
-    });
-}
+
 
 // Chart untuk timeline penambahan bookmark
 function updateTimelineChart(period = currentTimelinePeriod) {
@@ -486,74 +417,7 @@ function updateFolderChart() {
     });
 }
 
-// Chart untuk waktu pembuatan bookmark
-function updateTimeChart() {
-    const canvas = document.getElementById('timeChart');
-    if (!canvas) return;
-    
-    const ctx = canvas.getContext('2d');
-    
-    // Mengelompokkan bookmark berdasarkan jam pembuatan
-    const hourlyCounts = Array(24).fill(0);
-    
-    bookmarksData.forEach(bookmark => {
-        const date = new Date(bookmark.dateAdded);
-        const hour = date.getHours();
-        hourlyCounts[hour]++;
-    });
-    
-    const labels = Array.from({length: 24}, (_, i) => {
-        return `${i.toString().padStart(2, '0')}:00`;
-    });
-    
-    if (timeChartInstance) {
-        timeChartInstance.destroy();
-    }
-    
-    timeChartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Jumlah Bookmark',
-                data: hourlyCounts,
-                backgroundColor: 'rgba(153, 102, 255, 0.7)',
-                borderColor: 'rgba(153, 102, 255, 1)',
-                borderWidth: 1
-            }]
-        },
-        options: {
-            responsive: true,
-            interaction: {
-                intersect: false,
-                mode: 'index'
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    title: {
-                        display: true,
-                        text: 'Jumlah Bookmark'
-                    }
-                },
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Jam'
-                    }
-                }
-            },
-            // CSP-compliant configuration
-            animation: {
-                duration: 0
-            },
-            hover: {
-                animationDuration: 0
-            },
-            responsiveAnimationDuration: 0
-        }
-    });
-}
+
 
 // Memperbarui tabel domain dengan search dan pagination
 function updateDomainTable() {
