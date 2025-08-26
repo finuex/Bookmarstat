@@ -4,6 +4,32 @@ let domainsData = {};
 let foldersData = {};
 let domainChartInstance, timelineChartInstance, folderChartInstance, timeChartInstance;
 
+// Variables for table pagination and search
+let filteredDomainsData = [];
+let currentPage = 1;
+let pageSize = 25;
+let sortColumn = 1; // Default sort by count
+let sortDirection = 'desc';
+
+// Global Chart.js configuration for CSP compliance
+Chart.defaults.set('animation', {
+    duration: 0
+});
+Chart.defaults.set('animations', {
+    colors: false,
+    numbers: false
+});
+Chart.defaults.set('responsive', true);
+Chart.defaults.set('interaction', {
+    intersect: false,
+    mode: 'index'
+});
+
+// Disable all animations and interactions that might cause CSP violations
+Chart.defaults.animation = false;
+Chart.defaults.hover.animationDuration = 0;
+Chart.defaults.responsiveAnimationDuration = 0;
+
 // Fungsi utama untuk memuat dan menganalisis data bookmark
 async function loadBookmarkData() {
     try {
@@ -158,6 +184,10 @@ function updateDomainChart() {
         },
         options: {
             responsive: true,
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
             plugins: {
                 legend: {
                     display: false
@@ -177,7 +207,15 @@ function updateDomainChart() {
                         text: 'Domain'
                     }
                 }
-            }
+            },
+            // CSP-compliant configuration
+            animation: {
+                duration: 0
+            },
+            hover: {
+                animationDuration: 0
+            },
+            responsiveAnimationDuration: 0
         }
     });
 }
@@ -234,6 +272,10 @@ function updateTimelineChart() {
         },
         options: {
             responsive: true,
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
             scales: {
                 y: {
                     beginAtZero: true,
@@ -248,7 +290,15 @@ function updateTimelineChart() {
                         text: 'Tanggal'
                     }
                 }
-            }
+            },
+            // CSP-compliant configuration
+            animation: {
+                duration: 0
+            },
+            hover: {
+                animationDuration: 0
+            },
+            responsiveAnimationDuration: 0
         }
     });
 }
@@ -300,11 +350,23 @@ function updateFolderChart() {
         },
         options: {
             responsive: true,
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
             plugins: {
                 legend: {
                     position: 'right'
                 }
-            }
+            },
+            // CSP-compliant configuration
+            animation: {
+                duration: 0
+            },
+            hover: {
+                animationDuration: 0
+            },
+            responsiveAnimationDuration: 0
         }
     });
 }
@@ -347,6 +409,10 @@ function updateTimeChart() {
         },
         options: {
             responsive: true,
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
             scales: {
                 y: {
                     beginAtZero: true,
@@ -361,34 +427,270 @@ function updateTimeChart() {
                         text: 'Jam'
                     }
                 }
+            },
+            // CSP-compliant configuration
+            animation: {
+                duration: 0
+            },
+            hover: {
+                animationDuration: 0
+            },
+            responsiveAnimationDuration: 0
+        }
+    });
+}
+
+// Memperbarui tabel domain dengan search dan pagination
+function updateDomainTable() {
+    // Convert domains data to array format
+    const domainsArray = Object.entries(domainsData).map(([domain, data]) => {
+        const lastAddedDate = new Date(data.lastAdded);
+        return {
+            domain: domain,
+            count: data.count,
+            percentage: ((data.count / bookmarksData.length) * 100).toFixed(1),
+            lastAdded: lastAddedDate.toLocaleDateString('id-ID'), // Indonesian date format
+            lastAddedTimestamp: data.lastAdded, // Keep original timestamp for sorting
+            lastTitle: data.lastTitle
+        };
+    });
+    
+    // Apply search filter
+    const searchTerm = document.getElementById('domain-search')?.value.toLowerCase() || '';
+    filteredDomainsData = domainsArray.filter(item => 
+        item.domain.toLowerCase().includes(searchTerm) ||
+        item.lastTitle.toLowerCase().includes(searchTerm)
+    );
+    
+    // Apply sorting
+    applySorting();
+    
+    // Reset to first page when data changes
+    currentPage = 1;
+    
+    // Update pagination and table
+    updatePagination();
+    renderTablePage();
+    updateTableInfo();
+    updateTableHeaders();
+}
+
+// Apply sorting to filtered data
+function applySorting() {
+    filteredDomainsData.sort((a, b) => {
+        let aVal, bVal;
+        
+        switch(sortColumn) {
+            case 0: // Domain
+                aVal = a.domain.toLowerCase();
+                bVal = b.domain.toLowerCase();
+                break;
+            case 1: // Count
+                aVal = a.count;
+                bVal = b.count;
+                break;
+            case 2: // Percentage
+                aVal = parseFloat(a.percentage);
+                bVal = parseFloat(b.percentage);
+                break;
+            case 3: // Last Added (use timestamp for accurate sorting)
+                aVal = a.lastAddedTimestamp || 0;
+                bVal = b.lastAddedTimestamp || 0;
+                break;
+            default:
+                aVal = a.count;
+                bVal = b.count;
+        }
+        
+        // For dates and numbers, use numeric comparison
+        if (sortColumn === 1 || sortColumn === 2 || sortColumn === 3) {
+            if (sortDirection === 'asc') {
+                return aVal - bVal;
+            } else {
+                return bVal - aVal;
+            }
+        } else {
+            // For strings, use string comparison
+            if (sortDirection === 'asc') {
+                return aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+            } else {
+                return aVal > bVal ? -1 : aVal < bVal ? 1 : 0;
             }
         }
     });
 }
 
-// Memperbarui tabel domain
-function updateDomainTable() {
+// Render current page of table
+function renderTablePage() {
     const tableBody = document.getElementById('domainTableBody');
+    if (!tableBody) return;
+    
     tableBody.innerHTML = '';
     
-    // Mengurutkan domain berdasarkan jumlah bookmark
-    const sortedDomains = Object.entries(domainsData)
-        .sort((a, b) => b[1].count - a[1].count);
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = Math.min(startIndex + pageSize, filteredDomainsData.length);
     
-    sortedDomains.forEach(([domain, data]) => {
+    if (filteredDomainsData.length === 0) {
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.setAttribute('colspan', '4');
+        cell.className = 'empty-state';
+        cell.textContent = 'Tidak ada data yang ditemukan';
+        row.appendChild(cell);
+        tableBody.appendChild(row);
+        return;
+    }
+    
+    for (let i = startIndex; i < endIndex; i++) {
+        const item = filteredDomainsData[i];
         const row = document.createElement('tr');
         
-        const percentage = ((data.count / bookmarksData.length) * 100).toFixed(1);
-        const lastAdded = new Date(data.lastAdded).toLocaleDateString();
-        
         row.innerHTML = `
-            <td>${domain}</td>
-            <td>${data.count.toLocaleString()}</td>
-            <td>${percentage}%</td>
-            <td>${lastAdded} (${data.lastTitle})</td>
+            <td>${item.domain}</td>
+            <td>${item.count.toLocaleString()}</td>
+            <td>${item.percentage}%</td>
+            <td>${item.lastAdded} (${item.lastTitle})</td>
         `;
         
         tableBody.appendChild(row);
+    }
+}
+
+// Update pagination controls
+function updatePagination() {
+    const totalPages = Math.ceil(filteredDomainsData.length / pageSize);
+    const prevBtn = document.getElementById('prev-page');
+    const nextBtn = document.getElementById('next-page');
+    const pageNumbers = document.getElementById('page-numbers');
+    
+    if (prevBtn) {
+        prevBtn.disabled = currentPage <= 1;
+    }
+    
+    if (nextBtn) {
+        nextBtn.disabled = currentPage >= totalPages;
+    }
+    
+    // Generate page numbers
+    if (pageNumbers) {
+        pageNumbers.innerHTML = '';
+        
+        // Show page numbers (with ellipsis for large datasets)
+        const maxVisiblePages = 5;
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+        
+        // Adjust start page if end page is near the total
+        if (endPage - startPage < maxVisiblePages - 1) {
+            startPage = Math.max(1, endPage - maxVisiblePages + 1);
+        }
+        
+        // First page and ellipsis
+        if (startPage > 1) {
+            addPageNumber(1);
+            if (startPage > 2) {
+                const ellipsis = document.createElement('span');
+                ellipsis.textContent = '...';
+                ellipsis.className = 'page-ellipsis';
+                pageNumbers.appendChild(ellipsis);
+            }
+        }
+        
+        // Visible page numbers
+        for (let i = startPage; i <= endPage; i++) {
+            addPageNumber(i);
+        }
+        
+        // Last page and ellipsis
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                const ellipsis = document.createElement('span');
+                ellipsis.textContent = '...';
+                ellipsis.className = 'page-ellipsis';
+                pageNumbers.appendChild(ellipsis);
+            }
+            addPageNumber(totalPages);
+        }
+    }
+}
+
+// Add page number button
+function addPageNumber(pageNum) {
+    const pageNumbers = document.getElementById('page-numbers');
+    if (!pageNumbers) return;
+    
+    const pageBtn = document.createElement('button');
+    pageBtn.textContent = pageNum;
+    pageBtn.className = `page-number ${pageNum === currentPage ? 'active' : ''}`;
+    
+    // Use addEventListener instead of onclick to avoid CSP violation
+    pageBtn.addEventListener('click', function() {
+        goToPage(pageNum);
+    });
+    
+    pageNumbers.appendChild(pageBtn);
+}
+
+// Navigate to specific page
+function goToPage(page) {
+    const totalPages = Math.ceil(filteredDomainsData.length / pageSize);
+    if (page >= 1 && page <= totalPages) {
+        currentPage = page;
+        updatePagination();
+        renderTablePage();
+        updateTableInfo();
+    }
+}
+
+// Update table info display
+function updateTableInfo() {
+    const tableInfo = document.getElementById('table-info');
+    if (!tableInfo) return;
+    
+    const startIndex = (currentPage - 1) * pageSize + 1;
+    const endIndex = Math.min(currentPage * pageSize, filteredDomainsData.length);
+    const total = filteredDomainsData.length;
+    const totalDomains = Object.keys(domainsData).length;
+    
+    if (total === 0) {
+        tableInfo.textContent = 'Tidak ada data yang ditemukan';
+    } else if (total === totalDomains) {
+        tableInfo.textContent = `Menampilkan ${startIndex}-${endIndex} dari ${total} domain`;
+    } else {
+        tableInfo.textContent = `Menampilkan ${startIndex}-${endIndex} dari ${total} domain (disaring dari ${totalDomains} total)`;
+    }
+}
+
+// Sort table by column
+function sortTable(columnIndex) {
+    if (sortColumn === columnIndex) {
+        // Toggle sort direction if same column
+        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        // New column, default to descending for count/percentage, ascending for text
+        sortColumn = columnIndex;
+        sortDirection = (columnIndex === 0 || columnIndex === 3) ? 'asc' : 'desc';
+    }
+    
+    updateDomainTable();
+    updateTableHeaders();
+}
+
+// Update table headers to show sort direction
+function updateTableHeaders() {
+    const headers = document.querySelectorAll('#domainTable th.sortable');
+    headers.forEach(header => {
+        const columnIndex = parseInt(header.getAttribute('data-column'));
+        // Reset all headers
+        const text = header.textContent.replace(/[↑↓↕]/g, '').trim();
+        
+        if (columnIndex === sortColumn) {
+            // Add sort direction indicator
+            header.textContent = text + (sortDirection === 'asc' ? ' ↑' : ' ↓');
+        } else {
+            // Add neutral indicator
+            header.textContent = text + ' ↕';
+        }
     });
 }
 
@@ -430,7 +732,14 @@ function showErrorState() {
     // Clear tabel dengan pesan error
     const tableBody = document.getElementById('domainTableBody');
     if (tableBody) {
-        tableBody.innerHTML = '<tr><td colspan="4" style="color: red; text-align: center;">Error loading data. Please check permissions and try again.</td></tr>';
+        const row = document.createElement('tr');
+        const cell = document.createElement('td');
+        cell.setAttribute('colspan', '4');
+        cell.className = 'error-state';
+        cell.textContent = 'Error loading data. Please check permissions and try again.';
+        row.appendChild(cell);
+        tableBody.innerHTML = '';
+        tableBody.appendChild(row);
     }
     
     // Update last updated dengan error
@@ -454,6 +763,84 @@ if (refreshBtn) {
 if (exportBtn) {
     exportBtn.addEventListener('click', exportData);
 }
+
+// Search and pagination event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // Search functionality
+    const searchInput = document.getElementById('domain-search');
+    const clearSearchBtn = document.getElementById('clear-search');
+    
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            updateDomainTable();
+        });
+        
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                updateDomainTable();
+            }
+        });
+    }
+    
+    if (clearSearchBtn) {
+        clearSearchBtn.addEventListener('click', function() {
+            if (searchInput) {
+                searchInput.value = '';
+                updateDomainTable();
+            }
+        });
+    }
+    
+    // Pagination controls
+    const prevPageBtn = document.getElementById('prev-page');
+    const nextPageBtn = document.getElementById('next-page');
+    const pageSizeSelect = document.getElementById('page-size');
+    
+    if (prevPageBtn) {
+        prevPageBtn.addEventListener('click', function() {
+            if (currentPage > 1) {
+                goToPage(currentPage - 1);
+            }
+        });
+    }
+    
+    if (nextPageBtn) {
+        nextPageBtn.addEventListener('click', function() {
+            const totalPages = Math.ceil(filteredDomainsData.length / pageSize);
+            if (currentPage < totalPages) {
+                goToPage(currentPage + 1);
+            }
+        });
+    }
+    
+    if (pageSizeSelect) {
+        pageSizeSelect.addEventListener('change', function() {
+            pageSize = parseInt(this.value);
+            currentPage = 1; // Reset to first page
+            updateDomainTable();
+        });
+    }
+    
+    // Load initial data
+    loadBookmarkData();
+    
+    // Initialize table headers
+    updateTableHeaders();
+    
+    // Add click event listeners to sortable table headers
+    const sortableHeaders = document.querySelectorAll('#domainTable th.sortable');
+    sortableHeaders.forEach(header => {
+        header.addEventListener('click', function() {
+            const columnIndex = parseInt(this.getAttribute('data-column'));
+            if (!isNaN(columnIndex)) {
+                sortTable(columnIndex);
+            }
+        });
+        
+        // Add visual feedback for clickable headers
+        header.style.cursor = 'pointer';
+    });
+});
 
 // Fungsi untuk mengekspor data
 function exportData() {
@@ -503,6 +890,3 @@ function exportData() {
     link.click();
     document.body.removeChild(link);
 }
-
-// Memuat data saat halaman siap
-document.addEventListener('DOMContentLoaded', loadBookmarkData);

@@ -71,20 +71,48 @@
         
         <div class="data-section">
             <h2>📋 Detail Bookmark per Domain</h2>
+            <div class="table-controls">
+                <div class="search-container">
+                    <input type="text" id="domain-search" placeholder="🔍 Cari domain..." class="search-input">
+                    <button id="clear-search" class="btn-clear">✕</button>
+                </div>
+                <div class="pagination-info">
+                    <span id="table-info">Menampilkan 0 dari 0 domain</span>
+                </div>
+            </div>
             <div class="table-container">
                 <table id="domainTable">
                     <thead>
                         <tr>
-                            <th>Domain</th>
-                            <th>Jumlah</th>
-                            <th>Persentase</th>
-                            <th>Bookmark Terbaru</th>
+                            <th data-column="0" class="sortable">Domain ↕</th>
+                            <th data-column="1" class="sortable">Jumlah ↕</th>
+                            <th data-column="2" class="sortable">Persentase ↕</th>
+                            <th data-column="3" class="sortable">Bookmark Terbaru ↕</th>
                         </tr>
                     </thead>
                     <tbody id="domainTableBody">
                         <!-- Data akan diisi oleh JavaScript -->
                     </tbody>
                 </table>
+            </div>
+            <div class="pagination-container">
+                <div class="pagination-controls">
+                    <button id="prev-page" class="btn-pagination">← Sebelumnya</button>
+                    <div class="page-numbers" id="page-numbers">
+                        <!-- Page numbers will be inserted here -->
+                    </div>
+                    <button id="next-page" class="btn-pagination">Selanjutnya →</button>
+                </div>
+                <div class="pagination-size">
+                    <label for="page-size">Tampilkan:</label>
+                    <select id="page-size" class="page-size-select">
+                        <option value="10">10</option>
+                        <option value="25" selected>25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    <span>per halaman</span>
+                </div>
             </div>
         </div>
         
