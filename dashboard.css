@@ -223,6 +223,18 @@ tr:hover {
     gap: 10px;
     padding: 8px 0;
     border-bottom: 1px solid #e1e4e8;
+    position: relative;
+}
+
+.bookmark-item:hover {
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    margin: 0 -5px;
+    padding: 8px 5px;
+}
+
+.bookmark-item:hover .bookmark-actions {
+    opacity: 1;
 }
 
 .bookmark-item:last-child {
@@ -273,6 +285,107 @@ tr:hover {
     white-space: nowrap;
     text-align: right;
     min-width: 70px;
+}
+
+.bookmark-actions {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    display: flex;
+    gap: 5px;
+    margin-left: auto;
+}
+
+.delete-bookmark-btn {
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 3px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 11px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.delete-bookmark-btn:hover {
+    background-color: #c0392b;
+    transform: scale(1.05);
+}
+
+.delete-bookmark-btn:active {
+    transform: scale(0.95);
+}
+
+/* Confirmation dialog styles */
+.bookmark-confirm-dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.bookmark-confirm-content {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    max-width: 400px;
+    width: 90%;
+}
+
+.bookmark-confirm-title {
+    margin: 0 0 10px 0;
+    color: #2c3e50;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.bookmark-confirm-message {
+    margin: 0 0 20px 0;
+    color: #7f8c8d;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.bookmark-confirm-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.bookmark-confirm-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s ease;
+}
+
+.bookmark-confirm-btn.cancel {
+    background-color: #bdc3c7;
+    color: #2c3e50;
+}
+
+.bookmark-confirm-btn.cancel:hover {
+    background-color: #95a5a6;
+}
+
+.bookmark-confirm-btn.delete {
+    background-color: #e74c3c;
+    color: white;
+}
+
+.bookmark-confirm-btn.delete:hover {
+    background-color: #c0392b;
 }
 
 /* Table Controls Styles */

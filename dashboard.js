@@ -612,6 +612,11 @@ function renderTablePage() {
                 <div class="bookmark-date">
                     ${bookmarkDate}
                 </div>
+                <div class="bookmark-actions">
+                    <button class="delete-bookmark-btn" data-bookmark-id="${bookmark.id}" data-domain="${item.domain}" title="Delete bookmark">
+                        🗑️ Delete
+                    </button>
+                </div>
             `;
             
             bookmarkList.appendChild(bookmarkItem);
@@ -628,6 +633,18 @@ function renderTablePage() {
     expandButtons.forEach(button => {
         button.addEventListener('click', function() {
             toggleBookmarkDetails(this);
+        });
+    });
+    
+    // Add event listeners for delete bookmark buttons
+    const deleteButtons = document.querySelectorAll('.delete-bookmark-btn');
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const bookmarkId = this.getAttribute('data-bookmark-id');
+            const domain = this.getAttribute('data-domain');
+            showDeleteConfirmation(bookmarkId, domain, this);
         });
     });
 }
@@ -998,4 +1015,216 @@ function toggleBookmarkDetails(button) {
             button.textContent = '▼'; // Down arrow
         }
     }
+}
+
+// Show delete confirmation dialog
+function showDeleteConfirmation(bookmarkId, domain, buttonElement) {
+    // Find the bookmark details
+    const bookmark = findBookmarkById(bookmarkId);
+    if (!bookmark) {
+        console.error('Bookmark not found:', bookmarkId);
+        return;
+    }
+    
+    // Create confirmation dialog
+    const dialog = document.createElement('div');
+    dialog.className = 'bookmark-confirm-dialog';
+    
+    dialog.innerHTML = `
+        <div class="bookmark-confirm-content">
+            <h3 class="bookmark-confirm-title">🗑️ Delete Bookmark</h3>
+            <div class="bookmark-confirm-message">
+                Are you sure you want to delete this bookmark?<br>
+                <strong>${bookmark.title || 'Untitled'}</strong><br>
+                <em>${bookmark.url}</em>
+            </div>
+            <div class="bookmark-confirm-actions">
+                <button class="bookmark-confirm-btn cancel">Cancel</button>
+                <button class="bookmark-confirm-btn delete">Delete</button>
+            </div>
+        </div>
+    `;
+    
+    // Add to page
+    document.body.appendChild(dialog);
+    
+    // Add event listeners
+    const cancelBtn = dialog.querySelector('.cancel');
+    const deleteBtn = dialog.querySelector('.delete');
+    
+    cancelBtn.addEventListener('click', function() {
+        document.body.removeChild(dialog);
+    });
+    
+    deleteBtn.addEventListener('click', function() {
+        deleteBookmark(bookmarkId, domain, buttonElement);
+        document.body.removeChild(dialog);
+    });
+    
+    // Close dialog when clicking outside
+    dialog.addEventListener('click', function(e) {
+        if (e.target === dialog) {
+            document.body.removeChild(dialog);
+        }
+    });
+}
+
+// Find bookmark by ID in the data structure
+function findBookmarkById(bookmarkId) {
+    for (const bookmark of bookmarksData) {
+        if (bookmark.id === bookmarkId) {
+            return bookmark;
+        }
+    }
+    return null;
+}
+
+// Delete bookmark using Chrome API
+async function deleteBookmark(bookmarkId, domain, buttonElement) {
+    try {
+        // Delete bookmark using Chrome bookmarks API
+        await chrome.bookmarks.remove(bookmarkId);
+        
+        // Remove from local data structures
+        removeBookmarkFromData(bookmarkId, domain);
+        
+        // Remove the bookmark item from DOM
+        const bookmarkItem = buttonElement.closest('.bookmark-item');
+        if (bookmarkItem) {
+            bookmarkItem.remove();
+        }
+        
+        // Update the bookmark count in the domain row
+        updateDomainRowAfterDelete(domain);
+        
+        // Refresh charts and statistics
+        updateStats();
+        updateCharts();
+        updateDomainTable();
+        
+        // Show success message
+        showNotification('✅ Bookmark deleted successfully', 'success');
+        
+    } catch (error) {
+        console.error('Error deleting bookmark:', error);
+        showNotification('❌ Failed to delete bookmark: ' + error.message, 'error');
+    }
+}
+
+// Remove bookmark from local data structures
+function removeBookmarkFromData(bookmarkId, domain) {
+    // Remove from bookmarksData array
+    const bookmarkIndex = bookmarksData.findIndex(bookmark => bookmark.id === bookmarkId);
+    if (bookmarkIndex !== -1) {
+        bookmarksData.splice(bookmarkIndex, 1);
+    }
+    
+    // Remove from domainsData
+    if (domainsData[domain] && domainsData[domain].bookmarks) {
+        const domainBookmarkIndex = domainsData[domain].bookmarks.findIndex(bookmark => bookmark.id === bookmarkId);
+        if (domainBookmarkIndex !== -1) {
+            domainsData[domain].bookmarks.splice(domainBookmarkIndex, 1);
+            domainsData[domain].count--;
+            
+            // If no bookmarks left for this domain, remove it entirely
+            if (domainsData[domain].count <= 0) {
+                delete domainsData[domain];
+            } else {
+                // Update lastAdded to the most recent remaining bookmark
+                const remainingBookmarks = domainsData[domain].bookmarks;
+                if (remainingBookmarks.length > 0) {
+                    const mostRecent = remainingBookmarks.reduce((latest, current) => 
+                        current.dateAdded > latest.dateAdded ? current : latest
+                    );
+                    domainsData[domain].lastAdded = mostRecent.dateAdded;
+                    domainsData[domain].lastTitle = mostRecent.title;
+                }
+            }
+        }
+    }
+}
+
+// Update domain row display after bookmark deletion
+function updateDomainRowAfterDelete(domain) {
+    const domainData = domainsData[domain];
+    if (!domainData) {
+        // Domain has no bookmarks left, refresh the entire table
+        updateDomainTable();
+        return;
+    }
+    
+    // Find and update the domain row
+    const domainRows = document.querySelectorAll('#domainTableBody tr');
+    domainRows.forEach(row => {
+        const cells = row.children;
+        if (cells.length >= 5 && cells[1].textContent === domain) {
+            // Update count
+            cells[2].textContent = domainData.count.toLocaleString();
+            
+            // Update percentage
+            const percentage = ((domainData.count / bookmarksData.length) * 100).toFixed(1);
+            cells[3].textContent = percentage + '%';
+            
+            // Update last added
+            const lastAddedDate = new Date(domainData.lastAdded).toLocaleDateString('id-ID');
+            cells[4].textContent = `${lastAddedDate} (${domainData.lastTitle})`;
+            
+            // Update bookmark count in the expanded details header
+            const expandBtn = cells[0].querySelector('.expand-btn');
+            if (expandBtn) {
+                const detailsId = expandBtn.getAttribute('data-target');
+                const detailsRow = document.getElementById(detailsId);
+                if (detailsRow) {
+                    const header = detailsRow.querySelector('h4');
+                    if (header) {
+                        header.textContent = `📚 Bookmark dari ${domain} (${domainData.count} item):`;
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Show notification message
+function showNotification(message, type = 'info') {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        border-radius: 6px;
+        color: white;
+        font-weight: 500;
+        z-index: 9999;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        transition: all 0.3s ease;
+        max-width: 300px;
+    `;
+    
+    // Set background color based on type
+    if (type === 'success') {
+        notification.style.backgroundColor = '#27ae60';
+    } else if (type === 'error') {
+        notification.style.backgroundColor = '#e74c3c';
+    } else {
+        notification.style.backgroundColor = '#3498db';
+    }
+    
+    notification.textContent = message;
+    
+    // Add to page
+    document.body.appendChild(notification);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        notification.style.transform = 'translateX(100%)';
+        setTimeout(() => {
+            if (document.body.contains(notification)) {
+                document.body.removeChild(notification);
+            }
+        }, 300);
+    }, 3000);
 }
