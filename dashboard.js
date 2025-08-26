@@ -90,11 +90,20 @@ async function loadBookmarkData() {
                     domainsData[domain] = {
                         count: 0,
                         lastAdded: node.dateAdded,
-                        lastTitle: node.title
+                        lastTitle: node.title,
+                        bookmarks: [] // Store actual bookmarks
                     };
                 }
                 
                 domainsData[domain].count++;
+                domainsData[domain].bookmarks.push({
+                    id: node.id,
+                    title: node.title,
+                    url: node.url,
+                    dateAdded: node.dateAdded,
+                    folder: folderPath
+                });
+                
                 if (node.dateAdded > domainsData[domain].lastAdded) {
                     domainsData[domain].lastAdded = node.dateAdded;
                     domainsData[domain].lastTitle = node.title;
@@ -533,7 +542,7 @@ function renderTablePage() {
     if (filteredDomainsData.length === 0) {
         const row = document.createElement('tr');
         const cell = document.createElement('td');
-        cell.setAttribute('colspan', '4');
+        cell.setAttribute('colspan', '5');
         cell.className = 'empty-state';
         cell.textContent = 'Tidak ada data yang ditemukan';
         row.appendChild(cell);
@@ -543,9 +552,17 @@ function renderTablePage() {
     
     for (let i = startIndex; i < endIndex; i++) {
         const item = filteredDomainsData[i];
+        const rowId = `domain-row-${i}`;
+        const detailsId = `details-row-${i}`;
+        
+        // Main row
         const row = document.createElement('tr');
+        row.id = rowId;
         
         row.innerHTML = `
+            <td class="expand-column">
+                <button class="expand-btn" data-target="${detailsId}" data-domain="${item.domain}">▶</button>
+            </td>
             <td>${item.domain}</td>
             <td>${item.count.toLocaleString()}</td>
             <td>${item.percentage}%</td>
@@ -553,7 +570,66 @@ function renderTablePage() {
         `;
         
         tableBody.appendChild(row);
+        
+        // Details row (hidden by default)
+        const detailsRow = document.createElement('tr');
+        detailsRow.className = 'bookmark-details';
+        detailsRow.id = detailsId;
+        
+        const detailsCell = document.createElement('td');
+        detailsCell.setAttribute('colspan', '5');
+        
+        const bookmarkList = document.createElement('div');
+        bookmarkList.className = 'bookmark-list';
+        
+        const bookmarkTitle = document.createElement('h4');
+        bookmarkTitle.textContent = `📚 Bookmark dari ${item.domain} (${item.count} item):`;
+        bookmarkList.appendChild(bookmarkTitle);
+        
+        // Get bookmarks for this domain
+        const domainBookmarks = domainsData[item.domain]?.bookmarks || [];
+        
+        domainBookmarks.forEach(bookmark => {
+            const bookmarkItem = document.createElement('div');
+            bookmarkItem.className = 'bookmark-item';
+            
+            // Get favicon URL
+            const faviconUrl = getFaviconUrl(bookmark.url);
+            
+            // Format date
+            const bookmarkDate = new Date(bookmark.dateAdded).toLocaleDateString('id-ID');
+            
+            bookmarkItem.innerHTML = `
+                <img class="bookmark-favicon" src="${faviconUrl}" alt="" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik04IDRDNi4zNDMxNSA0IDUgNS4zNDMxNSA1IDdDNSA4LjY1Njg1IDYuMzQzMTUgMTAgOCAxMEM5LjY1Njg1IDEwIDExIDguNjU2ODUgMTEgN0MxMSA1LjM0MzE1IDkuNjU2ODUgNCA4IDRaIiBmaWxsPSIjOUM5Qzk5Ii8+CjxwYXRoIGQ9Ik04IDEyLjVMMTAuNSAxNEg1LjVMOCAxMi41WiIgZmlsbD0iIzlDOUM5OSIvPgo8L3N2Zz4K'">
+                <div class="bookmark-info">
+                    <a href="${bookmark.url}" target="_blank" class="bookmark-title" title="${bookmark.title}">
+                        ${bookmark.title || 'Untitled'}
+                    </a>
+                    <div class="bookmark-url" title="${bookmark.url}">
+                        ${bookmark.url}
+                    </div>
+                </div>
+                <div class="bookmark-date">
+                    ${bookmarkDate}
+                </div>
+            `;
+            
+            bookmarkList.appendChild(bookmarkItem);
+        });
+        
+        detailsCell.appendChild(bookmarkList);
+        detailsRow.appendChild(detailsCell);
+        
+        tableBody.appendChild(detailsRow);
     }
+    
+    // Add event listeners for expand buttons
+    const expandButtons = document.querySelectorAll('.expand-btn');
+    expandButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            toggleBookmarkDetails(this);
+        });
+    });
 }
 
 // Update pagination controls
@@ -711,7 +787,7 @@ function showLoadingState() {
     // Clear tabel
     const tableBody = document.getElementById('domainTableBody');
     if (tableBody) {
-        tableBody.innerHTML = '<tr><td colspan="4">Loading data...</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="5">Loading data...</td></tr>';
     }
     
     // Update last updated
@@ -734,7 +810,7 @@ function showErrorState() {
     if (tableBody) {
         const row = document.createElement('tr');
         const cell = document.createElement('td');
-        cell.setAttribute('colspan', '4');
+        cell.setAttribute('colspan', '5');
         cell.className = 'error-state';
         cell.textContent = 'Error loading data. Please check permissions and try again.';
         row.appendChild(cell);
@@ -889,4 +965,37 @@ function exportData() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+}
+
+// Get favicon URL for a given website URL
+function getFaviconUrl(url) {
+    try {
+        const domain = new URL(url).hostname;
+        return `https://www.google.com/s2/favicons?domain=${domain}&sz=16`;
+    } catch (e) {
+        // Return default icon for invalid URLs
+        return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik04IDRDNi4zNDMxNSA0IDUgNS4zNDMxNSA1IDdDNSA4LjY1Njg1IDYuMzQzMTUgMTAgOCAxMEM5LjY1Njg1IDEwIDExIDguNjU2ODUgMTEgN0MxMSA1LjM0MzE1IDkuNjU2ODUgNCA4IDRaIiBmaWxsPSIjOUM5Qzk5Ii8+CjxwYXRoIGQ9Ik04IDEyLjVMMTAuNSAxNEg1LjVMOCAxMi41WiIgZmlsbD0iIzlDOUM5OSIvPgo8L3N2Zz4K';
+    }
+}
+
+// Toggle bookmark details visibility
+function toggleBookmarkDetails(button) {
+    const targetId = button.getAttribute('data-target');
+    const detailsRow = document.getElementById(targetId);
+    
+    if (detailsRow) {
+        const isExpanded = detailsRow.classList.contains('expanded');
+        
+        if (isExpanded) {
+            // Collapse
+            detailsRow.classList.remove('expanded');
+            button.classList.remove('expanded');
+            button.textContent = '▶'; // Right arrow
+        } else {
+            // Expand
+            detailsRow.classList.add('expanded');
+            button.classList.add('expanded');
+            button.textContent = '▼'; // Down arrow
+        }
+    }
 }
