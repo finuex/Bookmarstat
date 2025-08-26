@@ -11,6 +11,9 @@ let pageSize = 25;
 let sortColumn = 1; // Default sort by count
 let sortDirection = 'desc';
 
+// Timeline chart filter period
+let currentTimelinePeriod = '24h';
+
 // Global Chart.js configuration for CSP compliance
 Chart.defaults.set('animation', {
     duration: 0
@@ -230,41 +233,144 @@ function updateDomainChart() {
 }
 
 // Chart untuk timeline penambahan bookmark
-function updateTimelineChart() {
+function updateTimelineChart(period = currentTimelinePeriod) {
     const canvas = document.getElementById('timelineChart');
     if (!canvas) return;
     
     const ctx = canvas.getContext('2d');
     
-    // Menghitung bookmark per hari (30 hari terakhir)
-    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
-    const dailyCounts = {};
+    let startTime, intervalUnit, intervalCount, labels = [], data = [];
+    let chartTitle = '';
     
-    // Inisialisasi objek untuk 30 hari terakhir
-    for (let i = 29; i >= 0; i--) {
-        const date = new Date(Date.now() - (i * 24 * 60 * 60 * 1000));
-        const dateStr = date.toISOString().split('T')[0];
-        dailyCounts[dateStr] = 0;
+    const now = Date.now();
+    
+    switch(period) {
+        case '24h':
+            // Last 24 hours - hourly data
+            startTime = now - (24 * 60 * 60 * 1000);
+            intervalUnit = 'hour';
+            intervalCount = 24;
+            chartTitle = '📅 Aktivitas Penambahan Bookmark (24 Jam Terakhir)';
+            
+            // Initialize hourly counts
+            const hourlyCounts = {};
+            for (let i = 23; i >= 0; i--) {
+                const date = new Date(now - (i * 60 * 60 * 1000));
+                const hourStr = date.getHours().toString().padStart(2, '0') + ':00';
+                hourlyCounts[hourStr] = 0;
+            }
+            
+            // Count bookmarks per hour
+            bookmarksData.forEach(bookmark => {
+                if (bookmark.dateAdded >= startTime) {
+                    const date = new Date(bookmark.dateAdded);
+                    const hourStr = date.getHours().toString().padStart(2, '0') + ':00';
+                    if (hourlyCounts[hourStr] !== undefined) {
+                        hourlyCounts[hourStr]++;
+                    }
+                }
+            });
+            
+            labels = Object.keys(hourlyCounts);
+            data = Object.values(hourlyCounts);
+            break;
+            
+        case '30d':
+            // Last 30 days - daily data
+            startTime = now - (30 * 24 * 60 * 60 * 1000);
+            intervalUnit = 'day';
+            intervalCount = 30;
+            chartTitle = '📅 Aktivitas Penambahan Bookmark (30 Hari Terakhir)';
+            
+            // Initialize daily counts
+            const dailyCounts = {};
+            for (let i = 29; i >= 0; i--) {
+                const date = new Date(now - (i * 24 * 60 * 60 * 1000));
+                const dateStr = date.toISOString().split('T')[0];
+                dailyCounts[dateStr] = 0;
+            }
+            
+            // Count bookmarks per day
+            bookmarksData.forEach(bookmark => {
+                if (bookmark.dateAdded >= startTime) {
+                    const date = new Date(bookmark.dateAdded);
+                    const dateStr = date.toISOString().split('T')[0];
+                    if (dailyCounts[dateStr] !== undefined) {
+                        dailyCounts[dateStr]++;
+                    }
+                }
+            });
+            
+            labels = Object.keys(dailyCounts);
+            data = Object.values(dailyCounts);
+            break;
+            
+        case '1y':
+            // Last 12 months - monthly data
+            startTime = now - (365 * 24 * 60 * 60 * 1000);
+            intervalUnit = 'month';
+            intervalCount = 12;
+            chartTitle = '📅 Aktivitas Penambahan Bookmark (1 Tahun Terakhir)';
+            
+            // Initialize monthly counts
+            const monthlyCounts = {};
+            for (let i = 11; i >= 0; i--) {
+                const date = new Date(now);
+                date.setMonth(date.getMonth() - i);
+                const monthStr = date.getFullYear() + '-' + (date.getMonth() + 1).toString().padStart(2, '0');
+                monthlyCounts[monthStr] = 0;
+            }
+            
+            // Count bookmarks per month
+            bookmarksData.forEach(bookmark => {
+                if (bookmark.dateAdded >= startTime) {
+                    const date = new Date(bookmark.dateAdded);
+                    const monthStr = date.getFullYear() + '-' + (date.getMonth() + 1).toString().padStart(2, '0');
+                    if (monthlyCounts[monthStr] !== undefined) {
+                        monthlyCounts[monthStr]++;
+                    }
+                }
+            });
+            
+            labels = Object.keys(monthlyCounts);
+            data = Object.values(monthlyCounts);
+            break;
+            
+        case 'all':
+            // All time - monthly data grouped by year-month
+            intervalUnit = 'month';
+            chartTitle = '📅 Aktivitas Penambahan Bookmark (Semua Masa)';
+            
+            // Group all bookmarks by month
+            const allTimeCounts = {};
+            bookmarksData.forEach(bookmark => {
+                const date = new Date(bookmark.dateAdded);
+                const monthStr = date.getFullYear() + '-' + (date.getMonth() + 1).toString().padStart(2, '0');
+                if (!allTimeCounts[monthStr]) {
+                    allTimeCounts[monthStr] = 0;
+                }
+                allTimeCounts[monthStr]++;
+            });
+            
+            // Sort by date
+            const sortedMonths = Object.keys(allTimeCounts).sort();
+            labels = sortedMonths;
+            data = sortedMonths.map(month => allTimeCounts[month]);
+            break;
     }
     
-    // Menghitung bookmark per hari
-    bookmarksData.forEach(bookmark => {
-        if (bookmark.dateAdded >= thirtyDaysAgo) {
-            const date = new Date(bookmark.dateAdded);
-            const dateStr = date.toISOString().split('T')[0];
-            if (dailyCounts[dateStr] !== undefined) {
-                dailyCounts[dateStr]++;
-            }
-        }
-    });
+    // Update chart title
+    const titleElement = document.getElementById('timeline-chart-title');
+    if (titleElement) {
+        titleElement.textContent = chartTitle;
+    }
     
-    const labels = Object.keys(dailyCounts);
-    const data = Object.values(dailyCounts);
-    
+    // Destroy existing chart
     if (timelineChartInstance) {
         timelineChartInstance.destroy();
     }
     
+    // Create new chart
     timelineChartInstance = new Chart(ctx, {
         type: 'line',
         data: {
@@ -296,7 +402,7 @@ function updateTimelineChart() {
                 x: {
                     title: {
                         display: true,
-                        text: 'Tanggal'
+                        text: period === '24h' ? 'Jam' : period === '30d' ? 'Tanggal' : 'Periode'
                     }
                 }
             },
@@ -945,6 +1051,31 @@ document.addEventListener('DOMContentLoaded', function() {
         // Add visual feedback for clickable headers
         header.style.cursor = 'pointer';
     });
+    
+    // Time filter controls for timeline chart
+    const timeFilterButtons = document.querySelectorAll('.time-filter-btn');
+    timeFilterButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            // Remove active class from all buttons
+            timeFilterButtons.forEach(btn => btn.classList.remove('active'));
+            
+            // Add active class to clicked button
+            this.classList.add('active');
+            
+            // Get the selected period and update global variable
+            const selectedPeriod = this.getAttribute('data-period');
+            currentTimelinePeriod = selectedPeriod;
+            
+            // Update the timeline chart with new period
+            updateTimelineChart(selectedPeriod);
+        });
+    });
+    
+    // Set default active button (24 hours)
+    const defaultButton = document.querySelector('.time-filter-btn[data-period="24h"]');
+    if (defaultButton) {
+        defaultButton.classList.add('active');
+    }
 });
 
 // Fungsi untuk mengekspor data

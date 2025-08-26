@@ -54,7 +54,15 @@
             </div>
             
             <div class="chart-card">
-                <h3>📅 Aktivitas Penambahan Bookmark (30 Hari Terakhir)</h3>
+                <div class="chart-header">
+                    <h3 id="timeline-chart-title">📅 Aktivitas Penambahan Bookmark (30 Hari Terakhir)</h3>
+                    <div class="time-filter-controls">
+                        <button class="time-filter-btn active" data-period="24h">24 Jam</button>
+                        <button class="time-filter-btn" data-period="30d">30 Hari</button>
+                        <button class="time-filter-btn" data-period="1y">1 Tahun</button>
+                        <button class="time-filter-btn" data-period="all">Semua</button>
+                    </div>
+                </div>
                 <canvas id="timelineChart"></canvas>
             </div>
             

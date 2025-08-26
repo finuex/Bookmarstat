@@ -128,6 +128,45 @@ button {
     font-size: 18px;
 }
 
+/* Time Filter Controls */
+.chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.time-filter-controls {
+    display: flex;
+    gap: 5px;
+}
+
+.time-filter-btn {
+    background-color: #ecf0f1;
+    color: #7f8c8d;
+    border: none;
+    border-radius: 5px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.time-filter-btn:hover {
+    background-color: #d5dbdb;
+    color: #2c3e50;
+}
+
+.time-filter-btn.active {
+    background-color: #3498db;
+    color: white;
+}
+
+.time-filter-btn.active:hover {
+    background-color: #2980b9;
+}
+
 .data-section {
     background: white;
     border-radius: 10px;
@@ -630,5 +669,26 @@ footer {
     .page-numbers {
         flex-wrap: wrap;
         justify-content: center;
+    }
+    
+    /* Time filter responsive styles */
+    .chart-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+    
+    .chart-header h3 {
+        text-align: center;
+        margin-bottom: 0;
+    }
+    
+    .time-filter-controls {
+        justify-content: center;
+    }
+    
+    .time-filter-btn {
+        flex: 1;
+        min-width: 0;
     }
 }
