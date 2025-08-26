@@ -599,6 +599,9 @@ function renderTablePage() {
             // Format date
             const bookmarkDate = new Date(bookmark.dateAdded).toLocaleDateString('id-ID');
             
+            // Format folder path - clean up and make more readable
+            const folderDisplay = formatFolderPath(bookmark.folder);
+            
             bookmarkItem.innerHTML = `
                 <img class="bookmark-favicon" src="${faviconUrl}" alt="" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik04IDRDNi4zNDMxNSA0IDUgNS4zNDMxNSA1IDdDNSA4LjY1Njg1IDYuMzQzMTUgMTAgOCAxMEM5LjY1Njg1IDEwIDExIDguNjU2ODUgMTEgN0MxMSA1LjM0MzE1IDkuNjU2ODUgNCA4IDRaIiBmaWxsPSIjOUM5Qzk5Ii8+CjxwYXRoIGQ9Ik04IDEyLjVMMTAuNSAxNEg1LjVMOCAxMi41WiIgZmlsbD0iIzlDOUM5OSIvPgo8L3N2Zz4K'">
                 <div class="bookmark-info">
@@ -608,6 +611,7 @@ function renderTablePage() {
                     <div class="bookmark-url" title="${bookmark.url}">
                         ${bookmark.url}
                     </div>
+                    ${folderDisplay ? `<div class="bookmark-folder" title="${bookmark.folder || 'Root'}">${folderDisplay}</div>` : ''}
                 </div>
                 <div class="bookmark-date">
                     ${bookmarkDate}
@@ -993,6 +997,40 @@ function getFaviconUrl(url) {
         // Return default icon for invalid URLs
         return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik04IDRDNi4zNDMxNSA0IDUgNS4zNDMxNSA1IDdDNSA4LjY1Njg1IDYuMzQzMTUgMTAgOCAxMEM5LjY1Njg1IDEwIDExIDguNjU2ODUgMTEgN0MxMSA1LjM0MzE1IDkuNjU2ODUgNCA4IDRaIiBmaWxsPSIjOUM5Qzk5Ii8+CjxwYXRoIGQ9Ik04IDEyLjVMMTAuNSAxNEg1LjVMOCAxMi41WiIgZmlsbD0iIzlDOUM5OSIvPgo8L3N2Zz4K';
     }
+}
+
+// Format folder path for display - clean up and make more readable
+function formatFolderPath(folderPath) {
+    if (!folderPath) {
+        return null; // Root folder or no folder
+    }
+    
+    // Clean up common browser bookmark folder names
+    let cleanPath = folderPath;
+    
+    // Remove common browser root folders that are not meaningful
+    cleanPath = cleanPath.replace(/^(Bookmarks Bar|Other Bookmarks|Mobile Bookmarks)\/?/, '');
+    
+    // If path is empty after cleanup, return null (root)
+    if (!cleanPath) {
+        return null;
+    }
+    
+    // Replace forward slashes with arrow symbols for better readability
+    cleanPath = cleanPath.replace(/\//g, ' → ');
+    
+    // Truncate very long paths (keep first and last parts)
+    if (cleanPath.length > 40) {
+        const parts = cleanPath.split(' → ');
+        if (parts.length > 3) {
+            cleanPath = parts[0] + ' → ... → ' + parts[parts.length - 1];
+        } else {
+            // Simple truncation for long single folder names
+            cleanPath = cleanPath.substring(0, 37) + '...';
+        }
+    }
+    
+    return cleanPath;
 }
 
 // Toggle bookmark details visibility

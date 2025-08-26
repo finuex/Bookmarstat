@@ -279,6 +279,23 @@ tr:hover {
     margin-top: 2px;
 }
 
+.bookmark-folder {
+    color: #8e44ad;
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.bookmark-folder::before {
+    content: '📁';
+    font-size: 10px;
+}
+
 .bookmark-date {
     color: #95a5a6;
     font-size: 11px;
