@@ -603,7 +603,7 @@ function renderTablePage() {
             const folderDisplay = formatFolderPath(bookmark.folder);
             
             bookmarkItem.innerHTML = `
-                <img class="bookmark-favicon" src="${faviconUrl}" alt="" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSIjRjNGNEY2Ii8+CjxwYXRoIGQ9Ik04IDRDNi4zNDMxNSA0IDUgNS4zNDMxNSA1IDdDNSA4LjY1Njg1IDYuMzQzMTUgMTAgOCAxMEM5LjY1Njg1IDEwIDExIDguNjU2ODUgMTEgN0MxMSA1LjM0MzE1IDkuNjU2ODUgNCA4IDRaIiBmaWxsPSIjOUM5Qzk5Ii8+CjxwYXRoIGQ9Ik04IDEyLjVMMTAuNSAxNEg1LjVMOCAxMi41WiIgZmlsbD0iIzlDOUM5OSIvPgo8L3N2Zz4K'">
+                <img class="bookmark-favicon" src="${faviconUrl}" alt="">
                 <div class="bookmark-info">
                     <a href="${bookmark.url}" target="_blank" class="bookmark-title" title="${bookmark.title}">
                         ${bookmark.title || 'Untitled'}
@@ -622,6 +622,14 @@ function renderTablePage() {
                     </button>
                 </div>
             `;
+            
+            // Add CSP-compliant error handler for favicon
+            const faviconImg = bookmarkItem.querySelector('.bookmark-favicon');
+            if (faviconImg) {
+                faviconImg.addEventListener('error', function() {
+                    this.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjE2IiBoZWlnaHQ9IjE2IiBmaWxsPSIjRjNGNEY2Ci8+CjxwYXRoIGQ9Ik04IDRDNi4zNDMxNSA0IDUgNS4zNDMxNSA1IDdDNSA4LjY1Njg1IDYuMzQzMTUgMTAgOCAxMEM5LjY1Njg1IDEwIDExIDguNjU2ODUgMTEgN0MxMSA1LjM0MzE1IDkuNjU2ODUgNCA4IDRaIiBmaWxsPSIjOUM5Qzk5Ci8+CjxwYXRoIGQ9Ik04IDEyLjVMMTAuNSAxNEg1LjVMOCAxMi41WiIgZmlsbD0iIzlDOUM5OSIvPgo8L3N2Zz4K';
+                });
+            }
             
             bookmarkList.appendChild(bookmarkItem);
         });
